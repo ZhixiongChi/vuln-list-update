@@ -1,4 +1,4 @@
-name: Update vuln-list-debian repo
+name: Update vuln-list-elxr repo
 on:
   schedule:
   - cron: "0 */6 * * *"
@@ -6,11 +6,11 @@ on:
 
 jobs:
   update:
-    name: Update vuln-list-debian
+    name: Update vuln-list-elxr
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.ORG_REPO_TOKEN }}
-      VULN_LIST_DIR: "vuln-list-debian"
+      GITHUB_TOKEN: ${{ secrets.ELXR_REPO_TOKEN }}
+      VULN_LIST_DIR: "vuln-list-elxr"
     steps:
     - name: Check out code
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -20,11 +20,11 @@ jobs:
       with:
         go-version-file: go.mod
 
-    - name: Check out vuln-list-debian repo
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    - name: Check out vuln-list-elxr repo
+      uses: actions/checkout@v5
       with:
         repository: ${{ github.repository_owner }}/${{ env.VULN_LIST_DIR }}
-        token: ${{ secrets.ORG_REPO_TOKEN }}
+        token: ${{ secrets.ELXR_REPO_TOKEN }}
         path: ${{ env.VULN_LIST_DIR }}
 
     - name: Setup github user email and name
@@ -36,14 +36,5 @@ jobs:
       run: go build -o vuln-list-update .
 
     - if: always()
-      name: Debian Security Bug Tracker
-      run: ./scripts/update.sh debian "Debian Security Bug Tracker"
-
-    - name: Microsoft Teams Notification
-      uses: Skitionek/notify-microsoft-teams@e7a2493ac87dad8aa7a62f079f295e54ff511d88
-      if: failure()
-      with:
-        webhook_url: ${{ secrets.TRIVY_MSTEAMS_WEBHOOK }}
-        needs: ${{ toJson(needs) }}
-        job: ${{ toJson(job) }}
-        steps: ${{ toJson(steps) }}
+      name: eLxr Security Bug Tracker
+      run: ./scripts/update.sh elxr "eLxr Security Bug Tracker"

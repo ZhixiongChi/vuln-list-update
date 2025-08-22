@@ -24,8 +24,10 @@ fi
 
 cd "$VULN_LIST_DIR" || exit 1
 
+ls -al tracker/ESA
+
 if [[ -n $(git status --porcelain) ]]; then
   git add .
-  git commit -m "${COMMIT_MSG}"
+  git commit -m "${COMMIT_MSG}" -q
   git push
 fi

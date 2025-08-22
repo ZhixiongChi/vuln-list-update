@@ -5,9 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"math/big"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -237,4 +239,93 @@ func LookupEnv(key, defaultValue string) string {
 		return val
 	}
 	return defaultValue
+}
+
+func CopyFileToDirectory(srcPath, dstDir string) error {
+	srcInfo, err := os.Stat(srcPath)
+	if err != nil {
+		return xerrors.Errorf("srcFile doesn't exist: %w", err)
+	}
+	if srcInfo.IsDir() {
+		return xerrors.Errorf("Not a File: %s", srcPath)
+	}
+
+	dstInfo, err := os.Stat(dstDir)
+	if !dstInfo.IsDir() {
+		return xerrors.Errorf("Not a directory: %s", dstDir)
+	}
+	if err != nil {
+		err = os.MkdirAll(dstDir, srcInfo.Mode())
+		if err != nil {
+			return xerrors.Errorf("mkdir dstDir failed: %w", err)
+		}
+	}
+
+	srcFile := filepath.Base(srcPath)
+	dstPath := filepath.Join(dstDir, srcFile)
+	err = os.MkdirAll(dstPath, srcInfo.Mode())
+	if err != nil {
+		return xerrors.Errorf("Create dstPath failed: %w", err)
+	}
+
+	return copyFile(srcPath, dstPath)
+}
+
+func copyFile(srcFile, dstFile string) error {
+	src, err := os.Open(srcFile)
+	if err != nil {
+		return xerrors.Errorf("open srcFile failed: %w", err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(dstFile)
+	if err != nil {
+		return xerrors.Errorf("create dstFile failed: %w", err)
+	}
+	defer dst.Close()
+
+	_, err = io.Copy(dst, src)
+	if err != nil {
+		return xerrors.Errorf("Copy file failed: %w", err)
+	}
+
+	srcInfo, err := os.Stat(srcFile)
+	if err != nil {
+		return xerrors.Errorf("Stat srcFile failed: %w", err)
+	}
+	err = os.Chmod(dstFile, srcInfo.Mode())
+	if err != nil {
+		return xerrors.Errorf("Chmod failed: %w", err)
+	}
+
+	return nil
+}
+
+func DownloadFile(url, filePath string) error {
+	// Make an HTTP GET request
+	resp, err := http.Get(url)
+	if err != nil {
+		return xerrors.Errorf("failed to make HTTP request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check for HTTP errors
+	if resp.StatusCode != http.StatusOK {
+		return xerrors.Errorf("bad status: %s", resp.Status)
+	}
+
+	// Create a file to save the downloaded content
+	out, err := os.Create(filePath)
+	if err != nil {
+		return xerrors.Errorf("failed to create file: %w", err)
+	}
+	defer out.Close()
+
+	// Copy the response body to the file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return xerrors.Errorf("failed to write to file: %w", err)
+	}
+
+	return nil
 }

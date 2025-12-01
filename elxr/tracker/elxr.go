@@ -405,9 +405,14 @@ func (c Client) updateElxrSources(ctx context.Context, dists map[string]Distribu
 					return xerrors.Errorf("unable to fetch sources: %w", err)
 				}
 
+				processedPackages := make(map[string]bool)
 				for _, header := range headers {
 					name := header.Get("Package")
 					if name == "" {
+						continue
+					}
+
+					if processedPackages[name] {
 						continue
 					}
 
@@ -415,6 +420,7 @@ func (c Client) updateElxrSources(ctx context.Context, dists map[string]Distribu
 					if err = utils.Write(filePath, header); err != nil {
 						return xerrors.Errorf("source write error: %w", err)
 					}
+					processedPackages[name] = true
 				}
 			}
 		}

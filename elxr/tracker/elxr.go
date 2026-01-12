@@ -27,6 +27,7 @@ const (
 	sourcesURL         = "https://ftp.debian.org/debian/dists/%s/%s/source/Sources.gz"
 	extendSourcesURL   = "https://mirror.elxr.dev/elxr/dists/%s/%s/source/Sources.gz"
 	securitySourcesURL = "https://security.debian.org/debian-security/dists/%s-security/updates/%s/source/Sources.xz"
+	extSecSourcesURL   = "https://mirror.elxr.dev/elxr/dists/%s-security/%s/source/Sources.gz"
 )
 
 var (
@@ -61,6 +62,7 @@ type options struct {
 	sourcesURL         string
 	extendSourcesURL   string
 	securitySourcesURL string
+	extSecSourcesURL   string
 	vulnListDir        string
 }
 
@@ -102,6 +104,12 @@ func WithSecuritySourcesURL(url string) option {
 	}
 }
 
+func WithExtSecSourcesURL(url string) option {
+	return func(opts *options) {
+		opts.extSecSourcesURL = url
+	}
+}
+
 func WithVulnListDir(dir string) option {
 	return func(opts *options) {
 		opts.vulnListDir = dir
@@ -122,6 +130,7 @@ func NewClient(opts ...option) Client {
 		sourcesURL:         sourcesURL,
 		extendSourcesURL:   extendSourcesURL,
 		securitySourcesURL: securitySourcesURL,
+		extSecSourcesURL:   extSecSourcesURL,
 		vulnListDir:        utils.VulnListDir(),
 	}
 
@@ -393,7 +402,8 @@ func shouldStore(anns []*Annotation) bool {
 
 func (c Client) updateElxrSources(ctx context.Context, dists map[string]Distribution) error {
 	for target, baseURL := range map[string]string{
-		"elxr-source": c.extendSourcesURL,
+		"elxr-source":         c.extendSourcesURL,
+		"elxr-securitysource": c.extSecSourcesURL,
 	} {
 		for code := range dists {
 			for _, r := range elxrRepos {
@@ -402,7 +412,8 @@ func (c Client) updateElxrSources(ctx context.Context, dists map[string]Distribu
 				url := fmt.Sprintf(baseURL, code, r)
 				headers, err := c.fetchSources(ctx, url)
 				if err != nil {
-					return xerrors.Errorf("unable to fetch sources: %w", err)
+					log.Printf("WARNING: unable to fetch sources for URL %s: %v", url, err)
+					continue
 				}
 
 				processedPackages := make(map[string]bool)
